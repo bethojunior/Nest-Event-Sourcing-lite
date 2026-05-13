@@ -1,4 +1,23 @@
 services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: always
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U root -d database']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
   redis:
     image: redis/redis-stack-server:7.2.0-v10
     container_name: mobility-lite-redis
@@ -38,6 +57,7 @@ services:
 volumes:
   redis_data:
   rabbitmq_data:
+  postgres_data:
 
 networks:
   backend:
