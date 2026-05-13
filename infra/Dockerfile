@@ -20,5 +20,4 @@ ENV PATH=$PATH:/app/node_modules/.bin/
 
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 
-
 ENTRYPOINT ["sh", "infra/entrypoint.sh"]

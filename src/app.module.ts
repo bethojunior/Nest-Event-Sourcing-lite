@@ -1,29 +1,38 @@
 import { Logger, Module } from '@nestjs/common';
-import { PrismaModule } from './providers/prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { BullModule } from '@nestjs/bullmq';
-import { EmailModule } from './jobs/queues/email/email.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { NotificationEventHanlder } from './providers/notification/notification.event.handler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AuthModule } from './modules/v1/auth/auth.module';
+import { EventBusModule } from './providers/event-bus/event-bus.module';
+import { MailModule } from './providers/mail/mail.module';
 import { DiscordNotificationProvider } from './providers/notification/discord.notification.provider';
+import { NotificationEventHanlder } from './providers/notification/notification.event.handler';
+import { PrismaModule } from './providers/prisma/prisma.module';
+import { RedisModule } from './providers/redis/redis.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CacheConfigModule } from './providers/cache/cache.module';
+import { S3Module } from './providers/s3/s3.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    BullModule.forRoot({
-      connection: {
-        host: process.env.REDIS_HOST,
-        port: Number(process.env.REDIS_PORT),
-        password: process.env.REDIS_PASSWORD,
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
       },
-    }),
+    ]),
     EventEmitterModule.forRoot(),
-    EmailModule,
+    ScheduleModule.forRoot(),
+    EventBusModule,
+    RedisModule,
+    MailModule,
+    CacheConfigModule,
+    S3Module,
     PrismaModule,
-    AuthModule
+    AuthModule,
   ],
   controllers: [],
   providers: [
@@ -35,5 +44,4 @@ import { DiscordNotificationProvider } from './providers/notification/discord.no
     DiscordNotificationProvider,
   ],
 })
-
 export class AppModule {}
