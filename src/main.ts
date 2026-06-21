@@ -2,7 +2,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { ThrottlerGuard } from '@nestjs/throttler';
 import helmet from 'helmet';
 import { BusinessExceptionFilter } from './@shared/exceptions/business.exception.filter';
 import { AppModule } from './app.module';
@@ -31,7 +30,6 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new BusinessExceptionFilter());
-  app.useGlobalGuards(app.get(ThrottlerGuard));
 
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,

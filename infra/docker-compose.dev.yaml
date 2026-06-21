@@ -20,7 +20,7 @@ services:
 
   redis:
     image: redis/redis-stack-server:7.2.0-v10
-    container_name: mobility-lite-redis
+    container_name: redis
     restart: always
     ports:
       - '6379:6379'
@@ -29,14 +29,15 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
 
   rabbitmq:
     image: rabbitmq:3.13-management
-    container_name: mobility-lite-rabbitmq
+    container_name: rabbitmq
     restart: always
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}

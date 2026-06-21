@@ -1,12 +1,14 @@
-import { HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { LoginPayload } from 'src/@types/utils/login-payload';
-import { LoginAuthDto } from './dto/login-ayth.dto';
-import { UserEntity } from 'src/@shared/entities/user.entity';
-import { PrismaClient } from '@prisma/client';
+import { HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { CreateAuthDto } from './dto/create-auth.dto';
+import { UserEntity } from 'src/@shared/entities/user.entity';
 import { BusinessException } from 'src/@shared/exceptions/business.exception';
+import { LoginPayload } from 'src/@types/utils/login-payload';
+import { EventBusService } from 'src/providers/event-bus/event-bus.service';
+import { CreateAuthDto } from './dto/create-auth.dto';
+import { LoginAuthDto } from './dto/login-ayth.dto';
+import { UserCreatedEvent } from './events/useCreated.event';
 
 const prisma = new PrismaClient();
 
@@ -14,13 +16,13 @@ const prisma = new PrismaClient();
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
+    private eventBus: EventBusService,
   ) {}
   async login({
-    loginAuthDto
+    loginAuthDto,
   }: {
     loginAuthDto: LoginAuthDto;
   }): Promise<{ accessToken: string; user: UserEntity }> {
-    
     const user = await this.findOneByEmail(loginAuthDto.email);
 
     if (!user) {
@@ -40,59 +42,66 @@ export class AuthService {
       sub: user.id,
       email: user.email,
     };
-    
+
     const accessToken = this.jwtService.sign(payload);
 
     const { password, ...userWithoutPassword } = user;
 
     return {
       user: {
-        ...userWithoutPassword
+        ...userWithoutPassword,
       },
       accessToken,
     };
   }
 
-  async register(props: CreateAuthDto) : Promise<{ accessToken: string; user: UserEntity }>
-  {
+  async register(
+    props: CreateAuthDto,
+  ): Promise<{ accessToken: string; user: UserEntity }> {
     try {
       const existingUser = await this.findOneByEmail(props.email);
       const hashedPassword = await bcrypt.hash(props.password, 10);
       if (existingUser) {
         throw new UnauthorizedException('User with this email already exists');
       }
-      const newUser = await prisma.user.create({
-        data: {
-          name: props.name,
-          email: props.email,
-          password: hashedPassword,
-        },
-      }).catch(error => {
-        throw new BusinessException('Error creating user', error.stack);
-      });
+      const newUser = await prisma.user
+        .create({
+          data: {
+            name: props.name,
+            email: props.email,
+            password: hashedPassword,
+          },
+        })
+        .catch((error) => {
+          throw new BusinessException('Error creating user', error.stack);
+        });
 
       const payload: LoginPayload = {
         sub: newUser.id,
         email: newUser.email,
       };
-  
+
       const accessToken = this.jwtService.sign(payload);
-  
+
       const { password, ...userWithoutPassword } = newUser;
-  
+
+      this.eventBus.emit('user.created', new UserCreatedEvent(newUser.name, newUser.email));
+
       return {
         user: {
-          ...userWithoutPassword
+          ...userWithoutPassword,
         },
         accessToken,
       };
-
     } catch (error) {
       throw error;
     }
   }
 
-  async validateUser(email: string, password: string): Promise<UserEntity | null> {
+  async validateUser(
+    email: string,
+    password: string,
+  ): Promise<UserEntity | null> {
     const user = await this.findOneByEmail(email);
     if (!user) return null;
     if (user && (await bcrypt.compare(password, user.password))) {
@@ -105,6 +114,6 @@ export class AuthService {
   private async findOneByEmail(email: string): Promise<any> {
     return prisma.user.findFirst({
       where: { email },
-    })
+    });
   }
 }
