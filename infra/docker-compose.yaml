@@ -16,7 +16,6 @@ services:
         condition: service_healthy
     ports:
       - '${APP_PORT:-3001}:${APP_PORT:-3001}'
-      - '${ADMIN_PORT:-3002}:${ADMIN_PORT:-3002}'
     environment:
       NODE_ENV: production
       REDIS_HOST: redis
