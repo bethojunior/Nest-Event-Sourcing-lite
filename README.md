@@ -1,4 +1,4 @@
-# Madgic API
+# Boilerplate Nest Event Driven/Sourcing lite
 
 API REST + WebSocket construída com NestJS 11, servindo como backend principal do projeto Madgic.
 
