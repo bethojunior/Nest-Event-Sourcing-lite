@@ -10,6 +10,10 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      postgres-write:
+        condition: service_healthy
+      postgres-read:
+        condition: service_healthy
     ports:
       - '${APP_PORT:-3001}:${APP_PORT:-3001}'
       - '${ADMIN_PORT:-3002}:${ADMIN_PORT:-3002}'
@@ -24,9 +28,9 @@ services:
     networks:
       - backend
 
-  postgres:
+  postgres-write:
     image: postgres:16
-    container_name: postgres
+    container_name: postgres-write
     restart: always
     ports:
       - '5432:5432'
@@ -35,16 +39,45 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: database
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_write_data:/var/lib/postgresql/data
+      - ./postgres/primary-init.sh:/docker-entrypoint-initdb.d/init.sh
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U root -d database']
       interval: 5s
       timeout: 3s
       retries: 5
       start_period: 10s
+    networks:
+      - backend
+
+  postgres-read:
+    image: postgres:16
+    container_name: postgres-read
+    restart: always
+    user: postgres
+    ports:
+      - '5433:5432'
+    environment:
+      PGDATA: /var/lib/postgresql/data
+      PGPASSWORD: replicatorpassword
+    command: ['/bin/bash', '/scripts/replica.sh']
+    depends_on:
+      postgres-write:
+        condition: service_healthy
+    volumes:
+      - postgres_read_data:/var/lib/postgresql/data
+      - ./postgres/replica.sh:/scripts/replica.sh
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U root']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    networks:
+      - backend
 
   redis:
-    image: redis/redis-stack-server:7.2.0-v10
+    image: redis/redis-stack-server:7.4.0-v0
     container_name: redis
     restart: always
     ports:
@@ -61,7 +94,7 @@ services:
       start_period: 20s
 
   rabbitmq:
-    image: rabbitmq:3.13-management
+    image: rabbitmq:4.0-management
     container_name: rabbitmq
     restart: always
     environment:
@@ -83,7 +116,8 @@ services:
 volumes:
   redis_data:
   rabbitmq_data:
-  postgres_data:
+  postgres_write_data:
+  postgres_read_data:
 
 networks:
   backend:

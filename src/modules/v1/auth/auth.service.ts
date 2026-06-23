@@ -8,7 +8,7 @@ import { LoginPayload } from 'src/@types/utils/login-payload';
 import { EventBusService } from 'src/providers/event-bus/event-bus.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { LoginAuthDto } from './dto/login-ayth.dto';
-import { UserCreatedEvent } from './events/useCreated.event';
+import { UserCreatedEntity } from './entities/useCreated.entity';
 
 const prisma = new PrismaClient();
 
@@ -85,7 +85,10 @@ export class AuthService {
 
       const { password, ...userWithoutPassword } = newUser;
 
-      this.eventBus.emit('user.created', new UserCreatedEvent(newUser.name, newUser.email));
+      this.eventBus.emit(
+        'user.created',
+        new UserCreatedEntity(newUser.name, newUser.email),
+      );
 
       return {
         user: {

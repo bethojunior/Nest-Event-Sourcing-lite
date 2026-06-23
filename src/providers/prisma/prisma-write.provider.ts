@@ -7,26 +7,26 @@ import {
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
-export class PrismaProvider
+export class PrismaWriteProvider
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
-  private readonly logger = new Logger(PrismaProvider.name);
+  private readonly logger = new Logger(PrismaWriteProvider.name);
 
-  constructor(
-  ) {
+  constructor() {
     super({
+      datasources: { db: { url: process.env.DATABASE_URL } },
       log: ['query', 'info', 'warn', 'error'],
     });
   }
 
   async onModuleInit() {
     await this.$connect();
-    this.logger.log('✅ Prisma connected!');
+    this.logger.log('✅ Prisma (write) connected!');
   }
 
   async onModuleDestroy() {
     await this.$disconnect();
-    this.logger.error('❌ Prisma disconnected!');
+    this.logger.error('❌ Prisma (write) disconnected!');
   }
 }

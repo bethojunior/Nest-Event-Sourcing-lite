@@ -12,6 +12,7 @@ import { RedisModule } from './providers/redis/redis.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CacheConfigModule } from './providers/cache/cache.module';
 import { S3Module } from './providers/s3/s3.module';
+import { BlogModule } from './modules/v1/blog/blog.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { S3Module } from './providers/s3/s3.module';
     S3Module,
     PrismaModule,
     AuthModule,
+    BlogModule,
   ],
   controllers: [],
   providers: [

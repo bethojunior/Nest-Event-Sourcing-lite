@@ -7,6 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum EventStatus {
+  PENDING
+  PUBLISHED
+  PROCESSING
+  PROCESSED
+  FAILED_PUBLISH
+  FAILED_PROCESSING
+}
+
 model User {
   id       String  @id @default(cuid())
   name     String
@@ -19,3 +28,28 @@ model User {
   @@map("user")
 }
 
+model Event {
+  id          String      @id @default(uuid())
+  type        String
+  aggregateId String?
+  status      EventStatus @default(PENDING)
+  payload     Json
+
+  failedReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([status])
+  @@index([aggregateId])
+  @@map("events")
+}
+
+model Blog {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

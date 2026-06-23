@@ -4,22 +4,31 @@ import { EventStatus } from '@prisma/client';
 import { EventBusService } from 'src/providers/event-bus/event-bus.service';
 import { EventMessage } from 'src/providers/event-bus/events';
 import { PrismaWriteProvider } from 'src/providers/prisma/prisma-write.provider';
-import { UserCreatedEntity } from '../entities/useCreated.entity';
+import { BlogCreatedEntity } from '../entities/blogCreated.entity';
+
 @Controller()
-export class UserCreatedEventConsumer {
+export class BlogCreatedEventConsumer {
   constructor(
     private readonly prisma: PrismaWriteProvider,
     private eventBus: EventBusService,
   ) {}
-  @EventPattern('user.created')
-  async handleUserCreated(@Payload() props: EventMessage<UserCreatedEntity>) {
+  @EventPattern('blog.created')
+  async handleBlogCreated(@Payload() props: EventMessage<BlogCreatedEntity>) {
     try {
       await this.eventBus.updateEvent(props.eventId, {
         status: EventStatus.PROCESSING,
       });
 
       const payload = props.payload;
-      console.log('user created', payload);
+
+      const post = await this.prisma.blog.create({
+        data: {
+          title: payload.title,
+          content: payload.content,
+        },
+      });
+
+      console.info('post created', post);
       await this.eventBus.updateEvent(props.eventId, {
         status: EventStatus.PROCESSED,
       });
@@ -28,6 +37,8 @@ export class UserCreatedEventConsumer {
         status: EventStatus.FAILED_PROCESSING,
         failedReason: error instanceof Error ? error.message : String(error),
       });
+
+      throw error;
     }
   }
 }
