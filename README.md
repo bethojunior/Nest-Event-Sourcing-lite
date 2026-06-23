@@ -12,8 +12,8 @@ API REST + WebSocket construída com NestJS 11, servindo como backend principal 
 | Framework | NestJS 11 |
 | ORM | Prisma 6 |
 | Banco de dados | PostgreSQL |
-| Cache | Redis (redis-stack-server 7.2) |
-| Fila | RabbitMQ 3.13 |
+| Cache | Redis (redis-stack-server 7.4) |
+| Fila | RabbitMQ 4.0 |
 | Auth | JWT + Passport |
 | WebSocket | Socket.IO 4 |
 | Mail | Nodemailer via @nestjs-modules/mailer |
@@ -38,7 +38,8 @@ APP_URL=
 APP_PORT=3002
 ENV=dev
 
-DATABASE_URL=postgres://user:pass@localhost:5433/db
+DATABASE_URL=postgres://root:password@localhost:5432/database
+DATABASE_READ_URL=postgres://root:password@localhost:5433/database
 
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -62,11 +63,13 @@ RABBITMQ_URL=amqp://guest:guest@localhost:5672
 
 ## Rodando localmente
 
-### Infraestrutura (Redis + RabbitMQ)
+### Infraestrutura
 
 ```bash
 docker compose -f infra/docker-compose.dev.yaml up -d
 ```
+
+Sobe: `postgres-write` (5432), `postgres-read` (5433, replica), Redis (6379), RabbitMQ (5672).
 
 ### Aplicação
 
@@ -93,18 +96,41 @@ A imagem é construída via `infra/Dockerfile`. O entrypoint executa as migratio
 ```
 src/
 ├── modules/v1/
-│   └── auth/           # Autenticação JWT
+│   ├── auth/                        # Autenticação JWT
+│   │   ├── consumers/               # useCreated.event.consumer
+│   │   ├── entities/                # useCreated.entity
+│   │   └── dto/
+│   └── blog/                        # CRUD de blog (exemplo)
+│       ├── consumers/               # blogCreated.consumer
+│       ├── entities/
+│       └── dto/
 ├── providers/
-│   ├── prisma/         # Cliente Prisma
-│   ├── redis/          # ioredis + cache-manager
-│   ├── mail/           # Envio de e-mail
-│   ├── event-bus/      # EventEmitter interno
-│   └── notification/   # Discord webhook
-└── @shared/
-    ├── entities/
-    ├── exceptions/     # Filtros globais
-    ├── interceptors/
-    └── events/
+│   ├── prisma/
+│   │   ├── prisma-write.provider    # DATABASE_URL (5432, escrita)
+│   │   └── prisma-read.provider     # DATABASE_READ_URL (5433, leitura)
+│   ├── event-bus/                   # Publica no RabbitMQ + persiste evento no DB
+│   ├── redis/
+│   ├── cache/
+│   ├── mail/
+│   ├── s3/
+│   └── notification/                # Discord webhook
+├── @shared/
+│   ├── entities/
+│   ├── exceptions/                  # Filtros globais
+│   └── events/
+└── decorators/
+```
+
+### Fluxo de eventos
+
+```
+Service → EventBusService.emit()
+            ├── persiste Event{status: PENDING} no postgres-write
+            ├── publica no RabbitMQ
+            └── Consumer recebe
+                    ├── atualiza status: PROCESSING
+                    ├── executa lógica
+                    └── atualiza status: PROCESSED | FAILED_PROCESSING
 ```
 
 ---
@@ -126,7 +152,9 @@ src/
 
 | Serviço | Porta |
 |---|---|
-| API principal | `APP_PORT` (default 3002) |
+| API principal | `APP_PORT` (default 3000) |
+| PostgreSQL write | 5432 |
+| PostgreSQL read (replica) | 5433 |
 | Redis | 6379 |
 | RabbitMQ AMQP | 5672 |
 | RabbitMQ Management | 15672 |
