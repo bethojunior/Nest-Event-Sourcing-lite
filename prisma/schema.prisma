@@ -43,6 +43,7 @@ model Event {
   @@index([type])
   @@index([status])
   @@index([aggregateId])
+
   @@map("events")
 }
 
@@ -52,4 +53,6 @@ model Blog {
   content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@map("blogs")
 }
